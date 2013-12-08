@@ -190,13 +190,15 @@ def main():
 		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
 
 	# Step 4: change DB settings and admin password
-	url_query = 'update %s_options set option_value="http://%s" where option_name="siteurl"' % (module.params['db_prefix'],module.params['vhost'])
-	admin_query = 'update %s_users set user_pass=MD5("%s") where user_login="%s"' % (module.params['db_prefix'],module.params['wp_admin_password'],module.params['wp_admin_username'])
+	url_query = "update %s_options set option_value='http://%s' where option_name='siteurl'" % (module.params['db_prefix'],module.params['vhost'])
+	home_query = "update %s_options set option_value'http://%s' where option_name='home'" % (module.params['db_prefix'],module.params['vhost'])
+	admin_query = "update %s_users set user_pass=MD5('%s') where user_login='%s'" % (module.params['db_prefix'],module.params['wp_admin_password'],module.params['wp_admin_username'])
 
 	try:
 		db = MySQLdb.connect(host=module.params['db_host'],user=module.params['db_username'],passwd=module.params['db_password'],db=module.params['db_name'])
 		db_cur = db.cursor()
 		db_cur.execute(url_query)
+		db_cur.execute(home_query)
 		db_cur.execute(admin_query)
 		db_cur.close()
 		db.close()
