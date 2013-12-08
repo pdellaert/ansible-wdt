@@ -144,13 +144,16 @@ def main():
 	# Step 1: checkout data
 	if not os.path.isdir('/var/www/vhosts/%s' % module.params['vhost']):
 		module.fail_json(msg='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
-
+	if not os.path.exists('/tmp/%s' % module.params['vhost']):
+		os.makedirs('/tmp/%s' % module.params['vhost'])
+	
 	try:
-		subprocess.check_call(['sudo', 'git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/var/www/vhosts/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
+		subprocess.check_call(['git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/tmp/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(msg='Git checkout failed with error: %s' % e.returncode)
 	
 	# Step 2: edit config file
+
 
 	# Step 3: import DB
 	module.exit_json(git_checkout=True)
