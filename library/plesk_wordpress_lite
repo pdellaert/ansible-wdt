@@ -149,7 +149,7 @@ def main():
 		module.fail_json(msg='The Python GIT module is required.')
 
 	# Step 1 checkout data
-	repo = git.Repo('ssh://%s@%s' % (module.params['git_username'],module.params['git_repsitory']) )
+	repo = git.Repo('ssh://%s@%s' % (module.params['git_username'],module.params['git_repository']) )
 	clone = repo.clone('/var/www/vhosts/%s/' % module.params['vhost'])
 	branch = module.params['git_branch']
 	clone.heads.branch.checkout()
