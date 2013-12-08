@@ -200,6 +200,7 @@ def main():
 		db_cur.execute(url_query)
 		db_cur.execute(home_query)
 		db_cur.execute(admin_query)
+		db.commit()
 		db_cur.close()
 		db.close()
 	except MySQLdb.Error as e:
