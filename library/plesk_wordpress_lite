@@ -181,7 +181,7 @@ def main():
 
 	with open('/tmp/%s/base/wp-config-dist.php' % module.params['vhost'], 'r') as distconf, open('/tmp/%s/base/wp-config.php' % module.params['vhost'], 'w') as conf:
 		for line in distconf:
-			for word in re.findall(r'\w+', line):
+			for word in re.findall(r'%\w%+', line):
 				if word in replace_dict:
 					line = line.replace(word, replace_dict[word])
 			conf.write(line)
@@ -191,7 +191,7 @@ def main():
 	# Step 3: import DB
 
 
-	module.exit_json(git_checkout=True)
+	module.exit_json(git_checkout=True,config_edit=True)
 
 
 
