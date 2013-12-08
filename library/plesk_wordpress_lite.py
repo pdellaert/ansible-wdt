@@ -1,0 +1,159 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+DOCUMENTATION = '''
+---
+author: Philippe Dellaert
+module: plesk_wordpress_lite
+short_description: Maintains a custom wordpress setup in a Plesk environment
+description: 
+	- This module deploys a custom wordpress setup in a Plesk environment as part of the WDT (Webapp Deployment Tool, a Symfony 2 bundle to automate and keep track of webapp deployments).
+version added: 0.1
+options:
+	vhost:
+		description:
+			- The vhost in Plesk for which the wordpress needs to be setup
+		required: true
+	admin_user:
+		description:
+			- The username of the adminitrative user in Plesk which has full access (and as whom the Plesk Subscription is set up)
+		required: true
+	db_name:
+		description:
+			- The database to which the application should be installed
+		required: true
+	db_username:
+		description:
+			- The username of the database user with full access to the database
+		required: true
+	db_password:
+		description:
+			- The password of the database user with full access to the database
+		required: true
+	git_repository:
+		description:
+			- The git repository from where the files should be cloned
+		required: true
+	git_branch:
+		description:
+			- The git branch from where the files should be cloned
+		required: false
+	git_username:
+		description:
+			- The username of the git user with read access to the git repository
+			- If you do not provide a username, an anonymous request is used
+		required: false
+	git_password:
+		description:
+			- The password of the git user with read access to the git repository
+			- If you do not provide a password, but do provide a username, a request with the default SSH of the user as whom ansible is being executed on the remote server, will be used.
+		required: false
+	wp_admin_username:
+		description:
+			- The Wordpress administrator username
+		required: true
+	wp_admin_password:
+		description:
+			- The Wordpress administrator password
+		required: true
+	wp_key_auth:
+		description:
+			- The Wordpress config auth key
+		required: true
+	wp_key_secure_auth:
+		description:
+			- The Wordpress config secure auth key
+		required: true
+	wp_key_logged_in:
+		description:
+			- The Wordpress config logged in key
+		required: true
+	wp_key_nonce:
+		description:
+			- The Wordpress config nonce key
+		required: true
+	wp_salt_auth:
+		description:
+			- The Wordpress config auth salt
+		required: true
+	wp_salt_secure_auth:
+		description:
+			- The Wordpress config secure auth salt
+		required: true
+	wp_salt_logged_in:
+		description:
+			- The Wordpress config logged in salt
+		required: true
+	wp_salt_nonce:
+		description:
+			- The Wordpress config nonce salt
+		required: true
+requirements: python-git, python-mysqldb
+'''
+
+import os
+try:
+	import MySQLdb
+except ImportError:
+	mysqldb_found = False
+else:
+	mysqldb_found = True
+try:
+	import git
+except ImportError:
+	git_found = False
+else: 
+	git_found = True
+
+# TODO new deployment: 
+# Step 1: checkout data
+# Step 2: edit config file
+# Step 3: import database
+# Step 4: remove install folder
+# Step 5: chown folder
+# Step 6: move files into place
+# Step 7: clean up
+
+# =============================================================================
+# Module execution
+#
+
+def main():
+	module = AnsibleModule(
+		argument_spec = dict(
+			vhost=dict(default=None, required=True),
+			admin_user=dict(default=None, required=True),
+			db_name=dict(default=None, required=True),
+			db_username=dict(default=None, required=True),
+			db_password=dict(default=None, required=True),
+			git_repository=dict(default=None, required=True),
+			git_branch=dict(default='master', required=False),
+			git_username=dict(default=None, required=False),
+			git_password=dict(default=None, required=False),
+			wp_admin_username=dict(default=None, required=True),
+			wp_admin_password=dict(default=None, required=True),
+			wp_key_auth=dict(default=None, required=True),
+			wp_key_secure_auth=dict(default=None, required=True),
+			wp_key_logged_in=dict(default=None, required=True),
+			wp_key_nonce=dict(default=None, required=True),
+			wp_salt_auth=dict(default=None, required=True),
+			wp_salt_secure_auth=dict(default=None, required=True),
+			wp_salt_logged_in=dict(default=None, required=True),
+			wp_salt_nonce=dict(default=None, required=True),
+		)
+	)
+
+	if not mysqldb_found:
+		module.fail_json(msg='The Python MySQL module is required.')
+	if not git_found:
+		module.fail_json(msg='The Python GIT module is required.')
+
+	# Step 1 checkout data
+	repo = git.Repo('ssh://%s@%s' % (module.param['git_username'],module.param['git_repsitory']) )
+	clone = repo.clone('/var/www/vhosts/%s/' % module.param['vhost'])
+	branch = module.param['git_branch']
+	clone.heads.branch.checkout()
+
+# import module snippets
+from ansible.module_utils.basic import *
+main()
