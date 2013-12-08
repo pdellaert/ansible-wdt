@@ -91,19 +91,13 @@ options:
 requirements: python-git, python-mysqldb
 '''
 
-import os
+import os, subprocess
 try:
 	import MySQLdb
 except ImportError:
 	mysqldb_found = False
 else:
 	mysqldb_found = True
-try:
-	import git
-except ImportError:
-	git_found = False
-else: 
-	git_found = True
 
 # TODO new deployment: 
 # Step 1: checkout data
@@ -145,13 +139,9 @@ def main():
 
 	if not mysqldb_found:
 		module.fail_json(msg='The Python MySQL module is required.')
-	if not git_found:
-		module.fail_json(msg='The Python GIT module is required.')
 
 	# Step 1 checkout data
-	repo = git.Repo.clone_from('ssh://%s@%s' % (module.params['git_username'],module.params['git_repository']), '/var/www/vhosts/%s/' % module.params['vhost'] )
-	branch = module.params['git_branch']
-	repo.heads.branch.checkout()
+	subprocess.check_call('git clone %s@%s /var/www/vhosts/%s/ -b %s' % (module.params['git_username'],module_params['git_repository'],module.params['vhost'],module_params['git_branch']))
 
 # import module snippets
 from ansible.module_utils.basic import *
