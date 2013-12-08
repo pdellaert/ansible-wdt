@@ -183,6 +183,9 @@ def main():
 			conf.write(line)
 
 	# Step 3: import DB
+	if not os.path.exists('/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost']):
+		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to locate initial-db-install.sql')
+
 	try:
 		sql_source = open('/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost'])
 		subprocess.check_call(['mysql','-u',module.params['db_username'],'-p%s' % module.params['db_password'],'-h',module.params['db_host'],module.params['db_name']], stdin=sql_source)
@@ -210,13 +213,35 @@ def main():
 			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error %s' % str(e))
 
 	# Step 5: remove install folder
+	try:
+		subprocess.check_call(['rm','-rf','/tmp/%s/base/install' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,msg='Unable to remove the install folder')
 
-# TODO new deployment
-# Step 6: chown folder, chmod everything
-# Step 7: move files into place
-# Step 8: clean up
+	# Step 6: Chown/Chmod folder
+	try:
+		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/tmp/%s/base' % module.params['vhost']])
+		subprocess.check_call(['sudo','chown','%s:psaserv' % module.params['admin_user'],'/tmp/%s/base' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go-rwX','/tmp/%s/base' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','u+rwX','/tmp/%s/base' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go+rX','/tmp/%s/base' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,msg='Unable to chmod or chown the folder')
 
-	module.exit_json(git_checkout=True,config_edit=True,db_import=True,db_update=True)
+	# Step 7: move files into place
+	try:
+		subprocess.check_call(['mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup' % module.params['vhost']])
+		subprocess.check_call(['mv','/tmp/%s/base' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,msg='Unable to move the folder')
+
+	# Step 8: clean up
+	try:
+		subprocess.check_call(['rm','-rf','/tmp/%s' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,msg='Cleanup failed')
+
+	module.exit_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True)
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
