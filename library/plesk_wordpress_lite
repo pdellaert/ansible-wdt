@@ -105,15 +105,6 @@ except ImportError:
 else:
 	mysqldb_found = True
 
-# TODO new deployment: 
-# Step 1: checkout data
-# Step 2: edit config file
-# Step 3: import database
-# Step 4: remove install folder
-# Step 5: chown folder
-# Step 6: move files into place
-# Step 7: clean up
-
 # =============================================================================
 # Module execution
 #
@@ -186,14 +177,20 @@ def main():
 					line = line.replace(word, replace_dict[word])
 			conf.write(line)
 
-
-
 	# Step 3: import DB
+	try:
+		subprocess.check_call('mysql','-u',module.params['db_username'],'-p%s' % module.params['db_password'],'-h',module.params['db_host'],module.params['db_name'],'<','/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost'])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
 
+# TODO new deployment
+# Step 3: import database
+# Step 4: remove install folder
+# Step 5: chown folder, chmod everything
+# Step 6: move files into place
+# Step 7: clean up
 
 	module.exit_json(git_checkout=True,config_edit=True)
-
-
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
