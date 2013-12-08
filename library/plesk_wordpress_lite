@@ -30,6 +30,10 @@ options:
 		description:
 			- The password of the database user with full access to the database
 		required: true
+	db_host:
+		description:
+			- The hostname of the database server
+		required: false
 	git_repository:
 		description:
 			- The git repository from where the files should be cloned
@@ -92,6 +96,7 @@ requirements: python-git, python-mysqldb
 '''
 
 import os
+import re
 import subprocess
 try:
 	import MySQLdb
@@ -121,6 +126,7 @@ def main():
 			db_name=dict(default=None, required=True),
 			db_username=dict(default=None, required=True),
 			db_password=dict(default=None, required=True),
+			db_host=dict(default='localhost', required=False),
 			git_repository=dict(default=None, required=True),
 			git_branch=dict(default='master', required=False),
 			git_username=dict(default=None, required=False),
@@ -153,9 +159,38 @@ def main():
 		module.fail_json(msg='Git checkout failed with error: %s' % e.returncode)
 	
 	# Step 2: edit config file
+	if not os.path.exists('/tmp/%s/base/wp-config-dist.php'):
+		module.fail_json(git_checkout=True,msg='Failed to locate wp-config-dist.php')
+
+	replace_dict = dict(
+		'%%WP_ROOT_DIR%%': '/var/www/vhosts/%s/httpdocs',
+		'%%WP_ROOT_URL%%': 'http://%s' % module.params['vhost'],
+		'%%WP_DB_NAME%%': module.params['db_name'],
+		'%%WP_DB_USER%%': module.params['db_username'],
+		'%%WP_DB_PASSWORD%%': module.params['db_password'],
+		'%%WP_DB_HOST%%': module.params['db_host'],
+		'%%WP_KEY_AUTH%%': module.params['wp_key_auth'],
+		'%%WP_KEY_SECURE_AUTH%%': module.params['wp_key_secure_auth'],
+		'%%WP_KEY_LOGGED_IN%%': module.params['wp_key_logged_in'],
+		'%%WP_KEY_NONCE%%': module.params['wp_key_nonce'],
+		'%%WP_SALT_AUTH%%': module.params['wp_salt_auth'],
+		'%%WP_SALT_SECURE_AUTH%%': module.params['wp_salt_secure_auth'],
+		'%%WP_SALT_LOGGED_IN%%': module.params['wp_salt_logged_in'],
+		'%%WP_SALT_NONCE%%': module.params['wp_salt_nonce'],
+	);
+
+	with open('/tmp/%s/base/wp-config-dist.php' % module.params['vhost'], 'r') as distconf, open('/tmp/%s/base/wp-config.php' % module.params['vhost'], 'w') as conf:
+		for line in distconf:
+			for word in re.findall(r'\w+', line):
+				if word in replace_dict:
+					line = line.replace(word, replace_dict[word])
+			conf.write(line)
+	
 
 
 	# Step 3: import DB
+
+
 	module.exit_json(git_checkout=True)
 
 
