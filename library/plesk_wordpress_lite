@@ -141,7 +141,10 @@ def main():
 		module.fail_json(msg='The Python MySQL module is required.')
 
 	# Step 1 checkout data
-	subprocess.check_call(['git','clone %s@%s /var/www/vhosts/%s/ -b %s' % (module.params['git_username'],module.params['git_repository'],module.params['vhost'],module.params['git_branch'])])
+	git_checkout = subprocess.call(['sudo', 'git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/var/www/vhosts/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
+
+	if git_checkout == 0:
+		module.exit_json(git_checkout=True)
 
 # import module snippets
 from ansible.module_utils.basic import *
