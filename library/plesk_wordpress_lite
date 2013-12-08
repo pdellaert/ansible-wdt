@@ -212,11 +212,14 @@ def main():
 		except IndexError:
 			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error %s' % str(e))
 
-	# Step 5: remove install folder
+	# Step 5: remove install folder, creating uploads folder
 	try:
 		subprocess.check_call(['rm','-rf','/tmp/%s/base/install' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,msg='Unable to remove the install folder')
+
+	if not os.path.exists('/tmp/%s/base/wp_content/uploads' % module.params['vhost'])
+		os.makedirs('/tmp/%s/base/wp_content/uploads' % module.params['vhost'])
 
 	# Step 6: Chown/Chmod folder
 	try:
@@ -225,7 +228,7 @@ def main():
 		subprocess.check_call(['sudo','chmod','-R','go-rwX','/tmp/%s/base' % module.params['vhost']])
 		subprocess.check_call(['sudo','chmod','-R','u+rwX','/tmp/%s/base' % module.params['vhost']])
 		subprocess.check_call(['sudo','chmod','-R','go+rX','/tmp/%s/base' % module.params['vhost']])
-		subprocess.check_call(['sudo','chmod','go+w','/tmp/%s/base/wp_content' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','go+w','/tmp/%s/base/wp_content/uploads' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,msg='Unable to chmod or chown the folder')
 
