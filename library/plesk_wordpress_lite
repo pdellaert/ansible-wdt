@@ -34,6 +34,10 @@ options:
 		description:
 			- The hostname of the database server
 		required: false
+	db_prefix:
+		description:
+			- The databas table prefix necessary to access the tables
+		required: true
 	git_repository:
 		description:
 			- The git repository from where the files should be cloned
@@ -118,6 +122,7 @@ def main():
 			db_username=dict(default=None, required=True),
 			db_password=dict(default=None, required=True),
 			db_host=dict(default='localhost', required=False),
+			db_prefix=dict(default=None,required=True),
 			git_repository=dict(default=None, required=True),
 			git_branch=dict(default='master', required=False),
 			git_username=dict(default=None, required=False),
@@ -184,14 +189,29 @@ def main():
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
 
-# TODO new deployment
-# Step 3: import database
-# Step 4: remove install folder
-# Step 5: chown folder, chmod everything
-# Step 6: move files into place
-# Step 7: clean up
+	# Step 4: change DB settings and admin password
+	url_query = 'update %s_options set option_value="http://%s" where option_name="siteurl"' % (module.params['db_prefix'],module.params['vhost'])
+	admin_query = 'update %s_users set user_pass=MD5("%s") where user_login="%s"' % (module.params['db_prefix'],module.params['wp_admin_password'],module.params['wp_admin_username'])
 
-	module.exit_json(git_checkout=True,config_edit=True,db_import=True)
+	try:
+		db = MySQLdb.connect(host=module.params['db_host'],user=module.params['db_username'],passwd=module.params['db_password'],db=module.params['db_name'])
+		db_cur = db.cursor()
+		db_cur.execute(url_query)
+		db_cur.execute(admin_query)
+	except MySQLdb.Error, e:
+		try:
+			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg="Database update error [%d]: %s" % (e.args[0], e.args[1]))
+		except IndexError:
+			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg="Database update error %s" % str(e))
+
+	# Step 5: remove install folder
+
+# TODO new deployment
+# Step 6: chown folder, chmod everything
+# Step 7: move files into place
+# Step 8: clean up
+
+	module.exit_json(git_checkout=True,config_edit=True,db_import=True,db_update=True)
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
