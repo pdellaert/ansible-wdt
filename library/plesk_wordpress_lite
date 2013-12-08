@@ -159,7 +159,7 @@ def main():
 		module.fail_json(msg='Git checkout failed with error: %s' % e.returncode)
 	
 	# Step 2: edit config file
-	if not os.path.exists('/tmp/%s/base/wp-config-dist.php'):
+	if not os.path.exists('/tmp/%s/base/wp-config-dist.php' % module.params['vhost']):
 		module.fail_json(git_checkout=True,msg='Failed to locate wp-config-dist.php')
 
 	replace_dict = dict({
