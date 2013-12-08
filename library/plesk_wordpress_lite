@@ -146,6 +146,6 @@ def main():
 	if git_checkout == 0:
 		module.exit_json(git_checkout=True)
 
-# import module snippets
-from ansible.module_utils.basic import *
+# this is magic, see lib/ansible/module_common.py
+#<<INCLUDE_ANSIBLE_MODULE_COMMON>>
 main()
