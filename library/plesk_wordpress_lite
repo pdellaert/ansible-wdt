@@ -191,7 +191,7 @@ def main():
 
 	# Step 4: change DB settings and admin password
 	url_query = "update %s_options set option_value='http://%s' where option_name='siteurl'" % (module.params['db_prefix'],module.params['vhost'])
-	home_query = "update %s_options set option_value'http://%s' where option_name='home'" % (module.params['db_prefix'],module.params['vhost'])
+	home_query = "update %s_options set option_value='http://%s' where option_name='home'" % (module.params['db_prefix'],module.params['vhost'])
 	admin_query = "update %s_users set user_pass=MD5('%s') where user_login='%s'" % (module.params['db_prefix'],module.params['wp_admin_password'],module.params['wp_admin_username'])
 
 	try:
