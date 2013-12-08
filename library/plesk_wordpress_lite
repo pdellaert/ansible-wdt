@@ -218,7 +218,7 @@ def main():
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,msg='Unable to remove the install folder')
 
-	if not os.path.exists('/tmp/%s/base/wp_content/uploads' % module.params['vhost'])
+	if not os.path.exists('/tmp/%s/base/wp_content/uploads' % module.params['vhost']):
 		os.makedirs('/tmp/%s/base/wp_content/uploads' % module.params['vhost'])
 
 	# Step 6: Chown/Chmod folder
