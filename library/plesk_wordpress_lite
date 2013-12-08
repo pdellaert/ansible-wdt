@@ -230,8 +230,8 @@ def main():
 
 	# Step 7: move files into place
 	try:
-		subprocess.check_call(['mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup' % module.params['vhost']])
-		subprocess.check_call(['mv','/tmp/%s/base' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/tmp/%s/base' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,msg='Unable to move the folder')
 
