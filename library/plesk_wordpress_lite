@@ -91,7 +91,8 @@ options:
 requirements: python-git, python-mysqldb
 '''
 
-import os, subprocess
+import os
+import subprocess
 try:
 	import MySQLdb
 except ImportError:
@@ -142,19 +143,19 @@ def main():
 
 	# Step 1: checkout data
 	if not os.path.isdir('/var/www/vhosts/%s' % module.params['vhost']):
-		module.fail_json(changed=False,git_checkout=False,error='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
-	if os.path.isdir('/var/www/vhosts/%s/base' % module.params['vhost']):
-		module.fail_json(changed=False,git_checkout=False,error='Git checkout folder /var/www/vhosts/%s/base already exists')
-	
-	git_output = subprocess.call(['sudo', 'git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/var/www/vhosts/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
+		module.fail_json(msg='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
+
+	try:
+		subprocess.check_call(['sudo', 'git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/var/www/vhosts/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(msg='Git checkout failed with error: %s' % e.returncode)
 	
 	# Step 2: edit config file
 
 	# Step 3: import DB
+	module.exit_json(git_checkout=True)
 
 
-	if git_checkout == 0:
-		module.exit_json(git_checkout=True)
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
