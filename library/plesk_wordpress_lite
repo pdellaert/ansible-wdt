@@ -180,7 +180,7 @@ def main():
 	# Step 3: import DB
 	try:
 		sql_source = open('/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost'])
-		subprocess.check_call(['mysql','-u',module.params['db_username'],'-p%s' % module.params['db_password'],'-h',module.params['db_host'],module.params['db_name']], sql_source)
+		subprocess.check_call(['mysql','-u',module.params['db_username'],'-p%s' % module.params['db_password'],'-h',module.params['db_host'],module.params['db_name']], stdin=sql_source)
 	except subprocess.CalledProcessError as e:
 		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
 
