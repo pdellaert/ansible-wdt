@@ -191,7 +191,7 @@ def main():
 # Step 6: move files into place
 # Step 7: clean up
 
-	module.exit_json(git_checkout=True,config_edit=True)
+	module.exit_json(git_checkout=True,config_edit=True,db_import=True)
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
