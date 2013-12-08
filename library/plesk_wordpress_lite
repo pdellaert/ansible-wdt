@@ -198,11 +198,13 @@ def main():
 		db_cur = db.cursor()
 		db_cur.execute(url_query)
 		db_cur.execute(admin_query)
-	except MySQLdb.Error, e:
+		db_cur.close()
+		db.close()
+	except MySQLdb.Error as e:
 		try:
-			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg="Database update error [%d]: %s" % (e.args[0], e.args[1]))
+			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error [%d]: %s' % (e.args[0], e.args[1]))
 		except IndexError:
-			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg="Database update error %s" % str(e))
+			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error %s' % str(e))
 
 	# Step 5: remove install folder
 
