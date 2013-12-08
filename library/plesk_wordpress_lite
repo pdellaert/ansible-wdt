@@ -162,7 +162,7 @@ def main():
 	if not os.path.exists('/tmp/%s/base/wp-config-dist.php'):
 		module.fail_json(git_checkout=True,msg='Failed to locate wp-config-dist.php')
 
-	replace_dict = dict(
+	replace_dict = dict({
 		'%%WP_ROOT_DIR%%': '/var/www/vhosts/%s/httpdocs' % module.params['vhost'],
 		'%%WP_ROOT_URL%%': 'http://%s' % module.params['vhost'],
 		'%%WP_DB_NAME%%': module.params['db_name'],
@@ -177,7 +177,7 @@ def main():
 		'%%WP_SALT_SECURE_AUTH%%': module.params['wp_salt_secure_auth'],
 		'%%WP_SALT_LOGGED_IN%%': module.params['wp_salt_logged_in'],
 		'%%WP_SALT_NONCE%%': module.params['wp_salt_nonce'],
-	);
+	});
 
 	with open('/tmp/%s/base/wp-config-dist.php' % module.params['vhost'], 'r') as distconf, open('/tmp/%s/base/wp-config.php' % module.params['vhost'], 'w') as conf:
 		for line in distconf:
