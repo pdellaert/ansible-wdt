@@ -142,7 +142,7 @@ def main():
 
 	# Step 1: checkout data
 	if not os.path.isdir('/var/www/vhosts/%s' % module.params['vhost']):
-		module.fail_json(changed=False,git_checkout=False,error-'vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
+		module.fail_json(changed=False,git_checkout=False,error='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
 	if os.path.isdir('/var/www/vhosts/%s/base' % module.params['vhost']):
 		module.fail_json(changed=False,git_checkout=False,error='Git checkout folder /var/www/vhosts/%s/base already exists')
 	try:
