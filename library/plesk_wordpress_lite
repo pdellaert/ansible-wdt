@@ -163,7 +163,7 @@ def main():
 		module.fail_json(git_checkout=True,msg='Failed to locate wp-config-dist.php')
 
 	replace_dict = dict(
-		'%%WP_ROOT_DIR%%': '/var/www/vhosts/%s/httpdocs',
+		'%%WP_ROOT_DIR%%': '/var/www/vhosts/%s/httpdocs' % module.params['vhost'],
 		'%%WP_ROOT_URL%%': 'http://%s' % module.params['vhost'],
 		'%%WP_DB_NAME%%': module.params['db_name'],
 		'%%WP_DB_USER%%': module.params['db_username'],
@@ -185,7 +185,7 @@ def main():
 				if word in replace_dict:
 					line = line.replace(word, replace_dict[word])
 			conf.write(line)
-	
+
 
 
 	# Step 3: import DB
