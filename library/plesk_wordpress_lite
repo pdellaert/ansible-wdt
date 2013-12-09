@@ -222,7 +222,7 @@ def deploy(module):
 def undeploy(module):
 	# Step 1: Backup database and remove old backups
 	try:
-		sql_backup = open('/tmp/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')), 'w')
+		sql_backup = open('/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'), 'w')
 		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
 		sql_backup.close()
 		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/sql_backup_*' % module.params['vhost']])
