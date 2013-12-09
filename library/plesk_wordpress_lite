@@ -256,11 +256,7 @@ def undeploy(module):
 
 	# Step 4: Chown/Chmod folders
 	try:
-		subprocess.check_call('sudo chown -R %s:psacln /var/www/vhosts/%s/httpdocs /var/www/vhosts/%s/*backup*' % (module.params['admin_user'],module.params['vhost'],module.params['vhost']),shell=True)
-		subprocess.check_call(['sudo','chown','%s:psaserv' % module.params['admin_user'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
-		subprocess.check_call(['sudo','chmod','-R','go-rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
-		subprocess.check_call(['sudo','chmod','-R','u+rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
-		subprocess.check_call(['sudo','chmod','-R','go+rX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chown','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/sql_backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
 	return True
