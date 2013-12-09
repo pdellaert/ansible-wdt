@@ -249,14 +249,14 @@ def undeploy(module):
 	# Step 3: backup files and replace original
 	try:
 		subprocess.check_call('sudo rm -rf /var/www/vhosts/%s/backup_*' % module.params['vhost'],shell=True)
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
 		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_backup' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,msg='Backup and replacing original failed')
 
 	# Step 4: Chown/Chmod folders
 	try:
-		subprocess.check_call(['sudo','chown','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/sql_backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
+		subprocess.check_call(['sudo','chown','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
 	return True
