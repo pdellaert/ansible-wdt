@@ -222,12 +222,12 @@ def deploy(module):
 
 def undeploy(module):
 	# Step 1: Creating backup folder
-	if not os.path.exists('/tmp/%s' % module.params['vhost']):
-		os.makedirs('/tmp/%s' % module.params['vhost'])
+	if not os.path.exists('/tmp/%s_backup' % module.params['vhost']):
+		os.makedirs('/tmp/%s_backup' % module.params['vhost'])
 
 	# Step 2: Backup database
 	try:
-		sql_backup = open('/tmp/%s/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')), 'w')
+		sql_backup = open('/tmp/%s_backup/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')), 'w')
 		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
 		sql_backup.close()
 	except subprocess.CalledProcessError as e:
@@ -251,21 +251,21 @@ def undeploy(module):
 
 	# Step 4: backup files and replace original
 	try:
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/tmp/%s/' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/tmp/%s_backup/' % module.params['vhost']])
 		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,msg='Backup and replacing original failed')
 
 	# Step 5: Chown/Chmod folders
 	try:
-		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/tmp/%s/' % module.params['vhost']])
+		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/tmp/%s_backup/' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
 
 	# Step 6: Delete old backup and move latest backup folder in place
 	try:
 		subprocess.check_call(['rm','-rf','/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
-		subprocess.check_call(['mv','/tmp/%s' % module.params['vhost'],'/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
+		subprocess.check_call(['mv','/tmp/%s_backup' % module.params['vhost'],'/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,msg='Failed to remove the previous backup and move the new backup')
 
