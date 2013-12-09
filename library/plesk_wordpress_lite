@@ -10,6 +10,10 @@ description:
 	- This module deploys a custom wordpress setup in a Plesk environment as part of the WDT (Webapp Deployment Tool, a Symfony 2 bundle to automate and keep track of webapp deployments).
 version added: 0.1
 options:
+	action:
+		description:
+			- What needs to be done, 3 choices are possible: deploy, redeploy, undeploy
+		required: true
 	vhost:
 		description:
 			- The vhost in Plesk for which the wordpress needs to be setup
@@ -102,6 +106,7 @@ requirements: python-git, python-mysqldb
 import os
 import re
 import subprocess
+import datetime
 try:
 	import MySQLdb
 except ImportError:
@@ -109,54 +114,19 @@ except ImportError:
 else:
 	mysqldb_found = True
 
-# =============================================================================
-# Module execution
-#
-
-def main():
-	module = AnsibleModule(
-		argument_spec = dict(
-			vhost=dict(default=None, required=True),
-			admin_user=dict(default=None, required=True),
-			db_name=dict(default=None, required=True),
-			db_username=dict(default=None, required=True),
-			db_password=dict(default=None, required=True),
-			db_host=dict(default='localhost', required=False),
-			db_prefix=dict(default=None,required=True),
-			git_repository=dict(default=None, required=True),
-			git_branch=dict(default='master', required=False),
-			git_username=dict(default=None, required=False),
-			git_password=dict(default=None, required=False),
-			wp_admin_username=dict(default=None, required=True),
-			wp_admin_password=dict(default=None, required=True),
-			wp_key_auth=dict(default=None, required=True),
-			wp_key_secure_auth=dict(default=None, required=True),
-			wp_key_logged_in=dict(default=None, required=True),
-			wp_key_nonce=dict(default=None, required=True),
-			wp_salt_auth=dict(default=None, required=True),
-			wp_salt_secure_auth=dict(default=None, required=True),
-			wp_salt_logged_in=dict(default=None, required=True),
-			wp_salt_nonce=dict(default=None, required=True),
-		)
-	)
-
-	if not mysqldb_found:
-		module.fail_json(msg='The Python MySQL module is required.')
-
+def deploy(module):	
 	# Step 1: checkout data
-	if not os.path.isdir('/var/www/vhosts/%s' % module.params['vhost']):
-		module.fail_json(msg='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
 	if not os.path.exists('/tmp/%s' % module.params['vhost']):
 		os.makedirs('/tmp/%s' % module.params['vhost'])
 	
 	try:
 		subprocess.check_call(['git', 'clone', '-q', '%s@%s' % (module.params['git_username'],module.params['git_repository']), '/tmp/%s/base' %  module.params['vhost'], '-b', module.params['git_branch']])
 	except subprocess.CalledProcessError as e:
-		module.fail_json(msg='Git checkout failed with error: %s' % e.returncode)
+		module.fail_json(action='deploy',msg='Git checkout failed with error: %s' % e.returncode)
 	
 	# Step 2: edit config file
 	if not os.path.exists('/tmp/%s/base/wp-config-dist.php' % module.params['vhost']):
-		module.fail_json(git_checkout=True,msg='Failed to locate wp-config-dist.php')
+		module.fail_json(action='deploy',git_checkout=True,msg='Failed to locate wp-config-dist.php')
 
 	replace_dict = dict({
 		'%WP_ROOT_DIR%': '/var/www/vhosts/%s/httpdocs' % module.params['vhost'],
@@ -184,13 +154,14 @@ def main():
 
 	# Step 3: import DB
 	if not os.path.exists('/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost']):
-		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to locate initial-db-install.sql')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,msg='Failed to locate initial-db-install.sql')
 
 	try:
 		sql_source = open('/tmp/%s/base/install/initial-db-install.sql' % module.params['vhost'])
 		subprocess.check_call(['mysql','-u',module.params['db_username'],'-p%s' % module.params['db_password'],'-h',module.params['db_host'],module.params['db_name']], stdin=sql_source)
+		sql_source.close()
 	except subprocess.CalledProcessError as e:
-		module.fail_json(git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,msg='Failed to import SQL into DB')
 
 	# Step 4: change DB settings and admin password
 	url_query = "update %s_options set option_value='http://%s' where option_name='siteurl'" % (module.params['db_prefix'],module.params['vhost'])
@@ -208,15 +179,15 @@ def main():
 		db.close()
 	except MySQLdb.Error as e:
 		try:
-			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error [%d]: %s' % (e.args[0], e.args[1]))
+			module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,msg='Database update error [%d]: %s' % (e.args[0], e.args[1]))
 		except IndexError:
-			module.fail_json(git_checkout=True,config_edit=True,db_import=True,msg='Database update error %s' % str(e))
+			module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,msg='Database update error %s' % str(e))
 
 	# Step 5: remove install folder, creating uploads folder
 	try:
 		subprocess.check_call(['rm','-rf','/tmp/%s/base/install' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
-		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,msg='Unable to remove the install folder')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,msg='Unable to remove the install folder')
 
 	if not os.path.exists('/tmp/%s/base/wp_content/uploads' % module.params['vhost']):
 		os.makedirs('/tmp/%s/base/wp_content/uploads' % module.params['vhost'])
@@ -230,22 +201,122 @@ def main():
 		subprocess.check_call(['sudo','chmod','-R','go+rX','/tmp/%s/base' % module.params['vhost']])
 		subprocess.check_call(['sudo','chmod','go+w','/tmp/%s/base/wp_content/uploads' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
-		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,msg='Unable to chmod or chown the folder')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,msg='Unable to chmod or chown the folder')
 
 	# Step 7: move files into place
 	try:
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup' % module.params['vhost']])
+		if module.params['action'] == 'deploy':
+			subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/original_backup' % module.params['vhost']])
 		subprocess.check_call(['sudo','mv','/tmp/%s/base' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
-		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,msg='Unable to move the folder')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,msg='Unable to move the folder')
 
 	# Step 8: clean up
 	try:
 		subprocess.check_call(['rm','-rf','/tmp/%s' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
-		module.fail_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,msg='Cleanup failed')
+		module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,msg='Cleanup failed')
 
-	module.exit_json(git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True)
+	return True
+
+def undeploy(module):
+	# Step 1: Backup database and remove old backups
+	try:
+		sql_backup = open('/tmp/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')), 'w')
+		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
+		sql_backup.close()
+		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/sql_backup_*' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/tmp/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')),'/var/www/vhosts/%s/' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(action='undeploy',msg='SQL backup failed or removal of old backups failed')
+
+	# Step 2: Cleanup database
+	try:
+		db = MySQLdb.connect(host=module.params['db_host'],user=module.params['db_username'],passwd=module.params['db_password'],db=module.params['db_name'])
+		db_cur = db.cursor()
+		db_cur.execute('SHOW TABLES')
+		for (table,) in db_cur:
+			db_cur.execute('drop table %s' % table)
+		db_cur.commit()
+		db_cur.close()
+		db.close()
+	except MySQLdb.Error as e:
+		try:
+			module.fail_json(action='undeploy',sql_backup=True,msg='Database update error [%d]: %s' % (e.args[0], e.args[1]))
+		except IndexError:
+			module.fail_json(action='undeploy',sql_backup=True,msg='Database update error %s' % str(e))
+
+	# Step 3: backup files and replace original
+	try:
+		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/backup_*' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_backup' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost'])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,msg='Backup and replacing original failed')
+
+	# Step 4: Chown/Chmod folders
+	try:
+		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/*backup*' % module.params['vhost']])
+		subprocess.check_call(['sudo','chown','%s:psaserv' % module.params['admin_user'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go-rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','u+rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go+rX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
+	return True
+
+
+# =============================================================================
+# Module execution
+#
+
+def main():
+	module = AnsibleModule(
+		argument_spec = dict(
+			action=dict(default=None, choices=['deploy','redeploy','undeploy'])
+			vhost=dict(default=None, required=True),
+			admin_user=dict(default=None, required=True),
+			db_name=dict(default=None, required=True),
+			db_username=dict(default=None, required=True),
+			db_password=dict(default=None, required=True),
+			db_host=dict(default='localhost', required=False),
+			db_prefix=dict(default=None,required=True),
+			git_repository=dict(default=None, required=True),
+			git_branch=dict(default='master', required=False),
+			git_username=dict(default=None, required=False),
+			git_password=dict(default=None, required=False),
+			wp_admin_username=dict(default=None, required=True),
+			wp_admin_password=dict(default=None, required=True),
+			wp_key_auth=dict(default=None, required=True),
+			wp_key_secure_auth=dict(default=None, required=True),
+			wp_key_logged_in=dict(default=None, required=True),
+			wp_key_nonce=dict(default=None, required=True),
+			wp_salt_auth=dict(default=None, required=True),
+			wp_salt_secure_auth=dict(default=None, required=True),
+			wp_salt_logged_in=dict(default=None, required=True),
+			wp_salt_nonce=dict(default=None, required=True),
+		)
+	)
+
+	if not mysqldb_found:
+		module.fail_json(msg='The Python MySQL module is required.')
+
+	if not os.path.isdir('/var/www/vhosts/%s' % module.params['vhost']):
+		module.fail_json(action=module.params['action'],msg='vhost homefolder /var/www/vhosts/%s does not exist' % module.params['vhost'])
+
+	if module.params['action'] == 'deploy':
+		if deploy(module):
+			module.exit_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
+	elif module.params['action'] == 'redeploy':
+		if undeploy(module):
+			if deploy(module):
+				module.exit_json(action='redeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chown_chmod=True,git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
+	elif module.params['action'] == 'undeploy':
+		if undeploy(module):
+			module.exit_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chown_chmod=True)
+	else:
+		module.fail_json(msg='Unknown action')
+	
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
