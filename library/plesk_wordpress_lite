@@ -269,6 +269,8 @@ def undeploy(module):
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,msg='Failed to remove the previous backup and move the new backup')
 
+	return True
+
 
 # =============================================================================
 # Module execution
