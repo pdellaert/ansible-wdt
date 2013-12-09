@@ -250,7 +250,7 @@ def undeploy(module):
 
 	# Step 4: backup files and replace original
 	try:
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/tmp/%s/' % module.params['vhost'])])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/tmp/%s/' % module.params['vhost']])
 		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,msg='Backup and replacing original failed')
