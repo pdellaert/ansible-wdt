@@ -225,7 +225,7 @@ def undeploy(module):
 		sql_backup = open('/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'), 'w')
 		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
 		sql_backup.close()
-		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/sql_backup_*' % module.params['vhost']])
+		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/sql_backup_*' % module.params['vhost']],shell=True)
 		subprocess.check_call(['sudo','mv','/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'),'/var/www/vhosts/%s/' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',msg='SQL backup failed or removal of old backups failed')
@@ -248,7 +248,7 @@ def undeploy(module):
 
 	# Step 3: backup files and replace original
 	try:
-		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/backup_*' % module.params['vhost']])
+		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/backup_*' % module.params['vhost']],shell=True)
 		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
 		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_backup' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
@@ -256,7 +256,11 @@ def undeploy(module):
 
 	# Step 4: Chown/Chmod folders
 	try:
-		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/sql_backup*' % module.params['vhost']])
+		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/*backup*' % module.params['vhost']],shell=True)
+		subprocess.check_call(['sudo','chown','%s:psaserv' % module.params['admin_user'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go-rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','u+rwX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','chmod','-R','go+rX','/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
 	return True
