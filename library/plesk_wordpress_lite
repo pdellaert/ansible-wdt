@@ -264,8 +264,8 @@ def undeploy(module):
 
 	# Step 6: Delete old backup and move latest backup folder in place
 	try:
-		subprocess.check_call(['rm','-rf','/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
-		subprocess.check_call(['mv','/tmp/%s_backup' % module.params['vhost'],'/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
+		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/tmp/%s_backup' % module.params['vhost'],'/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,msg='Failed to remove the previous backup and move the new backup')
 
