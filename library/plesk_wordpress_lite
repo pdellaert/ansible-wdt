@@ -107,6 +107,7 @@ import os
 import re
 import subprocess
 import datetime
+import glob
 try:
 	import MySQLdb
 except ImportError:
@@ -205,7 +206,7 @@ def deploy(module):
 
 	# Step 7: move files into place
 	try:
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/original_backup' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/original_httpdocs' % module.params['vhost']])
 		subprocess.check_call(['sudo','mv','/tmp/%s/base' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='deploy',git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,msg='Unable to move the folder')
@@ -219,17 +220,19 @@ def deploy(module):
 	return True
 
 def undeploy(module):
-	# Step 1: Backup database and remove old backups
+	# Step 1: Creating backup folder
+	if not os.path.exists('/tmp/%s' % module.params['vhost']):
+		os.makedirs('/tmp/%s' % module.params['vhost'])
+
+	# Step 2: Backup database
 	try:
-		sql_backup = open('/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'), 'w')
+		sql_backup = open('/tmp/%s/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')), 'w')
 		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
 		sql_backup.close()
-		subprocess.check_call('sudo rm -rf /var/www/vhosts/%s/sql_backup_*' % module.params['vhost'],shell=True)
-		subprocess.check_call(['sudo','mv','/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'),'/var/www/vhosts/%s/' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',msg='SQL backup failed or removal of old backups failed')
 
-	# Step 2: Cleanup database
+	# Step 3: Cleanup database
 	try:
 		db = MySQLdb.connect(host=module.params['db_host'],user=module.params['db_username'],passwd=module.params['db_password'],db=module.params['db_name'])
 		db_cur = db.cursor()
@@ -245,20 +248,25 @@ def undeploy(module):
 		except IndexError:
 			module.fail_json(action='undeploy',sql_backup=True,msg='Database update error %s' % str(e))
 
-	# Step 3: backup files and replace original
+	# Step 4: backup files and replace original
 	try:
-		subprocess.check_call('sudo rm -rf /var/www/vhosts/%s/backup_*' % module.params['vhost'],shell=True)
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/backup_%s' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
-		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_backup' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/httpdocs' % module.params['vhost'],'/tmp/%s/' % module.params['vhost'])])
+		subprocess.check_call(['sudo','mv','/var/www/vhosts/%s/original_httpdocs' % module.params['vhost'],'/var/www/vhosts/%s/httpdocs' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,msg='Backup and replacing original failed')
 
-	# Step 4: Chown/Chmod folders
+	# Step 5: Chown/Chmod folders
 	try:
-		subprocess.check_call(['sudo','chown','%s:psacln' % module.params['admin_user'],'/var/www/vhosts/%s/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d'))])
+		subprocess.check_call(['sudo','chown','-R','%s:psacln' % module.params['admin_user'],'/tmp/%s/' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,msg='Unable to chmod or chown the files and folders')
-	return True
+
+	# Step 6: Delete old backup and move latest backup folder in place
+	try:
+		subprocess.check_call(['rm','-rf','/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
+		subprocess.check_call(['mv','/tmp/%s' % module.params['vhost'],'/var/www/vhosts/%s/previous_deploy' % module.params['vhost']])
+	except subprocess.CalledProcessError as e:
+		module.fail_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,msg='Failed to remove the previous backup and move the new backup')
 
 
 # =============================================================================
@@ -305,10 +313,10 @@ def main():
 	elif module.params['action'] == 'redeploy':
 		if undeploy(module):
 			if deploy(module):
-				module.exit_json(action='redeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
+				module.exit_json(action='redeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,replace_backup=True,git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
 	elif module.params['action'] == 'undeploy':
 		if undeploy(module):
-			module.exit_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chown_chmod=True)
+			module.exit_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,replace_backup=True)
 	else:
 		module.fail_json(msg='Unknown action')
 	
