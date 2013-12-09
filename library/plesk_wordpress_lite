@@ -237,7 +237,7 @@ def undeploy(module):
 		db_cur.execute('SHOW TABLES')
 		for (table,) in db_cur:
 			db_cur.execute('drop table %s' % table)
-		db_cur.commit()
+		db.commit()
 		db_cur.close()
 		db.close()
 	except MySQLdb.Error as e:
