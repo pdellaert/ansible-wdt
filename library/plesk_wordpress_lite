@@ -226,7 +226,7 @@ def undeploy(module):
 		subprocess.check_call(['mysqldump','-u',module.params['db_username'],'-p%s' % module.params['db_password'],module.params['db_name']],stdout=sql_backup)
 		sql_backup.close()
 		subprocess.check_call(['sudo','rm','-rf','/var/www/vhosts/%s/sql_backup_*' % module.params['vhost']])
-		subprocess.check_call(['sudo','mv','/tmp/sql_backup_%s.sql' % (module.params['vhost'],datetime.datetime.now().strftime('%Y-%m-%d')),'/var/www/vhosts/%s/' % module.params['vhost']])
+		subprocess.check_call(['sudo','mv','/tmp/sql_backup_%s.sql' % datetime.datetime.now().strftime('%Y-%m-%d'),'/var/www/vhosts/%s/' % module.params['vhost']])
 	except subprocess.CalledProcessError as e:
 		module.fail_json(action='undeploy',msg='SQL backup failed or removal of old backups failed')
 
