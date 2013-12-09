@@ -273,7 +273,7 @@ def undeploy(module):
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
-			action=dict(default=None, choices=['deploy','redeploy','undeploy'])
+			action=dict(default=None, choices=['deploy','redeploy','undeploy']),
 			vhost=dict(default=None, required=True),
 			admin_user=dict(default=None, required=True),
 			db_name=dict(default=None, required=True),
