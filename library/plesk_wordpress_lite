@@ -310,7 +310,7 @@ def main():
 	elif module.params['action'] == 'redeploy':
 		if undeploy(module):
 			if deploy(module):
-				module.exit_json(action='redeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chown_chmod=True,git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
+				module.exit_json(action='redeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,git_checkout=True,config_edit=True,db_import=True,db_update=True,remove_install=True,chown_chmod=True,move_folder=True,clean_up=True)
 	elif module.params['action'] == 'undeploy':
 		if undeploy(module):
 			module.exit_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chown_chmod=True)
