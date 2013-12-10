@@ -12,7 +12,7 @@ version added: 0.1
 options:
 	action:
 		description:
-			- What needs to be done, 3 choices are possible: deploy, redeploy, undeploy
+			- What needs to be done, 3 choices are possible: deploy, redeploy, undeploy, delete
 		required: true
 	vhost:
 		description:
@@ -22,6 +22,10 @@ options:
 		description:
 			- The username of the adminitrative user in Plesk which has full access (and as whom the Plesk Subscription is set up)
 		required: true
+	admin_pass:
+		description:
+			- The password of the adminitrative user in Plesk which has full access (and as whom the Plesk Subscription is set up)
+		required: false
 	db_name:
 		description:
 			- The database to which the application should be installed
@@ -279,9 +283,10 @@ def undeploy(module):
 def main():
 	module = AnsibleModule(
 		argument_spec = dict(
-			action=dict(default=None, choices=['deploy','redeploy','undeploy']),
+			action=dict(default=None, choices=['deploy','redeploy','undeploy','delete']),
 			vhost=dict(default=None, required=True),
 			admin_user=dict(default=None, required=True),
+			admin_pass=dict(default=None, required=False),
 			db_name=dict(default=None, required=True),
 			db_username=dict(default=None, required=True),
 			db_password=dict(default=None, required=True),
@@ -320,6 +325,9 @@ def main():
 	elif module.params['action'] == 'undeploy':
 		if undeploy(module):
 			module.exit_json(action='undeploy',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,replace_backup=True)
+	elif module.params['action'] == 'delete':
+		if undeploy(module):
+			module.exit_json(action='delete',sql_backup=True,sql_cleanup=True,file_backup=True,chmod_chown=True,replace_backup=True)
 	else:
 		module.fail_json(msg='Unknown action')
 	
